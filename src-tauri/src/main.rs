@@ -18,6 +18,8 @@ use tauri::{
     AppHandle, LogicalPosition, LogicalSize, Manager, PhysicalPosition, WebviewWindowBuilder,
 };
 
+#[cfg(all(unix, not(target_os = "macos")))]
+use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 #[cfg(unix)]
@@ -679,14 +681,18 @@ fn append_backend_launch_log(
 
 fn show_main_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
+        move_window_to_current_desktop(&window);
         let _ = window.show();
-        let _ = window.set_focus();
+        move_window_to_current_desktop(&window);
+        focus_window_after_show(&window);
     }
 }
 
 fn center_main_window(app: &AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
+        move_window_to_current_desktop(&window);
         let _ = window.show();
+        move_window_to_current_desktop(&window);
 
         let monitor = window
             .current_monitor()
@@ -694,12 +700,12 @@ fn center_main_window(app: &AppHandle) {
             .flatten()
             .or_else(|| app.primary_monitor().ok().flatten());
         let Some(monitor) = monitor else {
-            let _ = window.set_focus();
+            focus_window_after_show(&window);
             return;
         };
 
         let Ok(window_size) = window.outer_size() else {
-            let _ = window.set_focus();
+            focus_window_after_show(&window);
             return;
         };
 
@@ -712,7 +718,271 @@ fn center_main_window(app: &AppHandle) {
 
         let _ = window.set_position(PhysicalPosition::new(next_x, next_y));
         persist_centered_window_state(app, next_x, next_y, monitor.scale_factor());
-        let _ = window.set_focus();
+        focus_window_after_show(&window);
+    }
+}
+
+fn focus_window_after_show(window: &tauri::WebviewWindow) {
+    if is_x11_window(window) {
+        return;
+    }
+
+    let _ = window.set_focus();
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn is_x11_window(window: &tauri::WebviewWindow) -> bool {
+    x11_window_id(window).is_some()
+}
+
+#[cfg(not(all(unix, not(target_os = "macos"))))]
+fn is_x11_window(_window: &tauri::WebviewWindow) -> bool {
+    false
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn move_window_to_current_desktop(window: &tauri::WebviewWindow) {
+    if env::var_os("WAYLAND_DISPLAY").is_some() && env::var_os("DISPLAY").is_none() {
+        return;
+    }
+
+    let Some(x_window) = x11_window_id(window) else {
+        return;
+    };
+
+    unsafe {
+        let Ok(xlib) = x11_dl::xlib::Xlib::open() else {
+            return;
+        };
+        let display = (xlib.XOpenDisplay)(std::ptr::null());
+        if display.is_null() {
+            return;
+        }
+
+        let workspace_window = x11_workspace_window(&xlib, display, x_window);
+        if let Some(current_desktop) = get_x11_current_desktop(&xlib, display) {
+            set_x11_window_desktop_property(&xlib, display, workspace_window, current_desktop);
+            request_x11_desktop_move(&xlib, display, workspace_window, current_desktop);
+        }
+
+        (xlib.XCloseDisplay)(display);
+    }
+}
+
+#[cfg(not(all(unix, not(target_os = "macos"))))]
+fn move_window_to_current_desktop(_window: &tauri::WebviewWindow) {}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn x11_window_id(window: &tauri::WebviewWindow) -> Option<libc::c_ulong> {
+    if env::var_os("WAYLAND_DISPLAY").is_some() && env::var_os("DISPLAY").is_none() {
+        return None;
+    }
+
+    let handle = window.window_handle().ok()?;
+    let x_window = match handle.as_raw() {
+        RawWindowHandle::Xlib(handle) => handle.window,
+        _ => return None,
+    };
+    (x_window != 0).then_some(x_window)
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+unsafe fn x11_workspace_window(
+    xlib: &x11_dl::xlib::Xlib,
+    display: *mut x11_dl::xlib::Display,
+    x_window: libc::c_ulong,
+) -> libc::c_ulong {
+    let root = (xlib.XDefaultRootWindow)(display);
+    let wm_state_atom = intern_x11_atom(xlib, display, "WM_STATE");
+    let mut current = x_window;
+    let mut topmost_child = x_window;
+
+    for _ in 0..32 {
+        if let Some(atom) = wm_state_atom {
+            if x11_property_exists(xlib, display, current, atom) {
+                return current;
+            }
+        }
+
+        let mut returned_root = 0;
+        let mut parent = 0;
+        let mut children: *mut libc::c_ulong = std::ptr::null_mut();
+        let mut child_count = 0;
+        let status = (xlib.XQueryTree)(
+            display,
+            current,
+            &mut returned_root,
+            &mut parent,
+            &mut children,
+            &mut child_count,
+        );
+        if !children.is_null() {
+            (xlib.XFree)(children.cast());
+        }
+        if status == 0 || parent == 0 || parent == root || parent == current {
+            break;
+        }
+
+        topmost_child = parent;
+        current = parent;
+    }
+
+    topmost_child
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+unsafe fn x11_property_exists(
+    xlib: &x11_dl::xlib::Xlib,
+    display: *mut x11_dl::xlib::Display,
+    x_window: libc::c_ulong,
+    property: x11_dl::xlib::Atom,
+) -> bool {
+    let mut actual_type = 0;
+    let mut actual_format = 0;
+    let mut item_count = 0;
+    let mut bytes_after = 0;
+    let mut data: *mut libc::c_uchar = std::ptr::null_mut();
+    let status = (xlib.XGetWindowProperty)(
+        display,
+        x_window,
+        property,
+        0,
+        0,
+        x11_dl::xlib::False,
+        x11_dl::xlib::AnyPropertyType as libc::c_ulong,
+        &mut actual_type,
+        &mut actual_format,
+        &mut item_count,
+        &mut bytes_after,
+        &mut data,
+    );
+    if !data.is_null() {
+        (xlib.XFree)(data.cast());
+    }
+
+    status == x11_dl::xlib::Success as libc::c_int && actual_type != 0
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+unsafe fn get_x11_current_desktop(
+    xlib: &x11_dl::xlib::Xlib,
+    display: *mut x11_dl::xlib::Display,
+) -> Option<libc::c_ulong> {
+    let root = (xlib.XDefaultRootWindow)(display);
+    let current_desktop_atom = intern_x11_atom(xlib, display, "_NET_CURRENT_DESKTOP")?;
+
+    let mut actual_type = 0;
+    let mut actual_format = 0;
+    let mut item_count = 0;
+    let mut bytes_after = 0;
+    let mut data: *mut libc::c_uchar = std::ptr::null_mut();
+    let status = (xlib.XGetWindowProperty)(
+        display,
+        root,
+        current_desktop_atom,
+        0,
+        1,
+        x11_dl::xlib::False,
+        x11_dl::xlib::XA_CARDINAL,
+        &mut actual_type,
+        &mut actual_format,
+        &mut item_count,
+        &mut bytes_after,
+        &mut data,
+    );
+
+    if status != x11_dl::xlib::Success as libc::c_int || data.is_null() {
+        if !data.is_null() {
+            (xlib.XFree)(data.cast());
+        }
+        return None;
+    }
+
+    let current_desktop = if actual_type == x11_dl::xlib::XA_CARDINAL
+        && actual_format == 32
+        && item_count > 0
+    {
+        Some(*(data as *const libc::c_ulong))
+    } else {
+        None
+    };
+
+    (xlib.XFree)(data.cast());
+    current_desktop
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+unsafe fn set_x11_window_desktop_property(
+    xlib: &x11_dl::xlib::Xlib,
+    display: *mut x11_dl::xlib::Display,
+    x_window: libc::c_ulong,
+    desktop: libc::c_ulong,
+) {
+    let Some(wm_desktop_atom) = intern_x11_atom(xlib, display, "_NET_WM_DESKTOP") else {
+        return;
+    };
+    let desktop = desktop as libc::c_ulong;
+    (xlib.XChangeProperty)(
+        display,
+        x_window,
+        wm_desktop_atom,
+        x11_dl::xlib::XA_CARDINAL,
+        32,
+        x11_dl::xlib::PropModeReplace,
+        (&desktop as *const libc::c_ulong).cast(),
+        1,
+    );
+    (xlib.XFlush)(display);
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+unsafe fn request_x11_desktop_move(
+    xlib: &x11_dl::xlib::Xlib,
+    display: *mut x11_dl::xlib::Display,
+    x_window: libc::c_ulong,
+    desktop: libc::c_ulong,
+) {
+    let root = (xlib.XDefaultRootWindow)(display);
+    let Some(wm_desktop_atom) = intern_x11_atom(xlib, display, "_NET_WM_DESKTOP") else {
+        return;
+    };
+
+    let mut data = x11_dl::xlib::ClientMessageData::new();
+    data.set_long(0, desktop as libc::c_long);
+    data.set_long(1, x11_dl::xlib::CurrentTime as libc::c_long);
+    data.set_long(2, 1);
+
+    let client_message = x11_dl::xlib::XClientMessageEvent {
+        type_: x11_dl::xlib::ClientMessage,
+        serial: 0,
+        send_event: x11_dl::xlib::True,
+        display,
+        window: x_window,
+        message_type: wm_desktop_atom,
+        format: 32,
+        data,
+    };
+    let mut event = x11_dl::xlib::XEvent { client_message };
+    let event_mask = x11_dl::xlib::SubstructureNotifyMask | x11_dl::xlib::SubstructureRedirectMask;
+
+    (xlib.XSendEvent)(display, root, x11_dl::xlib::False, event_mask, &mut event);
+    (xlib.XFlush)(display);
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+unsafe fn intern_x11_atom(
+    xlib: &x11_dl::xlib::Xlib,
+    display: *mut x11_dl::xlib::Display,
+    name: &str,
+) -> Option<x11_dl::xlib::Atom> {
+    let Ok(name) = std::ffi::CString::new(name) else {
+        return None;
+    };
+    let atom = (xlib.XInternAtom)(display, name.as_ptr(), x11_dl::xlib::False);
+    if atom == 0 {
+        None
+    } else {
+        Some(atom)
     }
 }
 
