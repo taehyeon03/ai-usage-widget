@@ -19,15 +19,17 @@ dependencies = [
 
 [[package]]
 name = "ai-usage-widget"
-version = "0.1.19"
+version = "0.1.21"
 dependencies = [
  "libc",
+ "raw-window-handle",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",
  "tauri-plugin-single-instance",
+ "x11-dl",
 ]
 
 [[package]]

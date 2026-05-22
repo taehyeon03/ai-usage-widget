@@ -1,6 +1,6 @@
 [package]
 name = "ai-usage-widget"
-version = "0.1.19"
+version = "0.1.21"
 description = "Floating desktop widget for AI coding CLI usage"
 authors = ["Elisardo González Agulla"]
 edition = "2021"
@@ -15,3 +15,7 @@ tauri = { version = "2", features = ["macos-private-api", "tray-icon", "image-ic
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
 libc = "0.2"
+raw-window-handle = "0.6"
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+x11-dl = "2.21"
