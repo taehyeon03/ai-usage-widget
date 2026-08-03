@@ -20,7 +20,7 @@ export type ProviderUsage = {
   stale?: boolean;
   refreshing?: boolean;
   usage: {
-    primary: {
+    primary?: {
       percent_left: number;
       reset: string;
     };

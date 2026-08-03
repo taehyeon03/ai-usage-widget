@@ -620,12 +620,15 @@ function renderProvider(provider: ProviderUsage, text: Messages, viewMode: ViewM
 
   const isGemini = provider.provider === "gemini";
   const label5h = isGemini ? "24h" : text.limit5h;
-  const resetValue = isGemini ? "23:59" : provider.usage.primary.reset;
-
-  const primaryUsed = 100 - provider.usage.primary.percent_left;
-  const primaryPrevious = previousUsage?.usage ? (100 - previousUsage.usage.primary.percent_left) : null;
-
-  const primary = renderLimitRow(label5h, primaryUsed, primaryPrevious, resetValue, text, viewMode, provider.stale || provider.refreshing, false);
+  let primary = "";
+  if (provider.usage.primary) {
+    const resetValue = isGemini ? "23:59" : provider.usage.primary.reset;
+    const primaryUsed = 100 - provider.usage.primary.percent_left;
+    const primaryPrevious = previousUsage?.usage?.primary
+      ? (100 - previousUsage.usage.primary.percent_left)
+      : null;
+    primary = renderLimitRow(label5h, primaryUsed, primaryPrevious, resetValue, text, viewMode, provider.stale || provider.refreshing, false);
+  }
   
   let weekly = "";
   if (provider.usage.weekly) {

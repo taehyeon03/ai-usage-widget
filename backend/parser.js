@@ -67,19 +67,22 @@ export function parseCodexStatus(output) {
   const reset = findScopedReset(output, /5h/i);
   const weeklyReset = findScopedReset(output, /weekly|week/i);
 
-  if (fiveHourPercent === null || reset === "unknown") {
+  const primary = fiveHourPercent === null || reset === "unknown" ? undefined : {
+    percent_left: fiveHourPercent,
+    reset
+  };
+  const weekly = weeklyPercent === null || weeklyReset === "unknown" ? undefined : {
+    percent_left: weeklyPercent,
+    reset: weeklyReset
+  };
+
+  if (!primary && !weekly) {
     return null;
   }
 
   return {
-    primary: {
-      percent_left: fiveHourPercent,
-      reset
-    },
-    weekly: weeklyPercent === null ? undefined : {
-      percent_left: weeklyPercent,
-      reset: weeklyReset
-    }
+    primary,
+    weekly
   };
 }
 

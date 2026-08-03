@@ -137,8 +137,8 @@ export function runCodexStatusPty(options = {}) {
 
               const screen = currentCodexScreen(output);
               if (/›\s*\/status/i.test(screen)) {
-                eventLog.push(`${timestamp()} EVENT retry-/status`);
-                sendStatusCommand(child, eventLog);
+                eventLog.push(`${timestamp()} EVENT submit-/status`);
+                submitPendingCommand(child, eventLog);
               }
             }, 1800);
           }
@@ -199,6 +199,16 @@ function sendStatusCommand(child, eventLog) {
   try {
     eventLog.push(`${timestamp()} WRITE /status`);
     child.write("/status\r");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function submitPendingCommand(child, eventLog) {
+  try {
+    eventLog.push(`${timestamp()} WRITE enter`);
+    child.write("\r");
     return true;
   } catch {
     return false;

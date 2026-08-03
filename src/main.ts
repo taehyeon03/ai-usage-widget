@@ -53,7 +53,7 @@ let suppressWindowStatePersistence = 0;
 let debugSequence = 0;
 let zoomPendingSync = 1.0;
 
-const sessionBaselines = new Map<string, { primary: number; weekly?: number }>();
+const sessionBaselines = new Map<string, { primary?: number; weekly?: number }>();
 const soundAlertState = new Set<string>();
 let audioContext: AudioContext | null = null;
 
@@ -425,7 +425,7 @@ function resolveTraySeverity(snapshot: UsageSnapshot): string {
     }
 
     const values = [
-      100 - provider.usage.primary.percent_left,
+      provider.usage.primary ? 100 - provider.usage.primary.percent_left : null,
       provider.usage.weekly ? 100 - provider.usage.weekly.percent_left : null
     ].filter((value): value is number => typeof value === "number" && Number.isFinite(value));
 
@@ -460,13 +460,14 @@ function maybePlayUsageAlerts(providerName: string, previousProvider: ProviderUs
   }
 
   const thresholds = normalizeSoundThresholds(appConfig.sound_alerts.thresholds);
-  const limits: Array<{ limit: string; previous: number | null; current: number }> = [
-    {
+  const limits: Array<{ limit: string; previous: number | null; current: number }> = [];
+  if (nextProvider.usage.primary) {
+    limits.push({
       limit: "primary",
-      previous: previousProvider?.usage ? 100 - previousProvider.usage.primary.percent_left : null,
+      previous: previousProvider?.usage?.primary ? 100 - previousProvider.usage.primary.percent_left : null,
       current: 100 - nextProvider.usage.primary.percent_left
-    }
-  ];
+    });
+  }
 
   if (nextProvider.usage.weekly) {
     limits.push({
@@ -609,7 +610,9 @@ async function refreshAllProviders(): Promise<void> {
 
       // Gestionar baseline de la sesion
       if (nextProvider.usage && !nextProvider.stale) {
-        const currentPrimaryUsed = 100 - nextProvider.usage.primary.percent_left;
+        const currentPrimaryUsed = nextProvider.usage.primary
+          ? 100 - nextProvider.usage.primary.percent_left
+          : undefined;
         const currentWeeklyUsed = nextProvider.usage.weekly ? (100 - nextProvider.usage.weekly.percent_left) : undefined;
         
         const baseline = sessionBaselines.get(providerName);
@@ -621,7 +624,7 @@ async function refreshAllProviders(): Promise<void> {
           });
         } else {
           // Si el uso ha bajado drasticamente (reinicio de cuota), actualizamos baseline
-          if (currentPrimaryUsed < baseline.primary) {
+          if (currentPrimaryUsed !== undefined && baseline.primary !== undefined && currentPrimaryUsed < baseline.primary) {
             baseline.primary = currentPrimaryUsed;
           }
           if (currentWeeklyUsed !== undefined && baseline.weekly !== undefined && currentWeeklyUsed < baseline.weekly) {
@@ -652,7 +655,9 @@ async function refreshAllProviders(): Promise<void> {
         ...nextProvider,
         usage: {
           ...nextProvider.usage,
-          primary: { ...nextProvider.usage.primary, percent_left: 100 - baseline.primary },
+          primary: nextProvider.usage.primary && baseline.primary !== undefined
+            ? { ...nextProvider.usage.primary, percent_left: 100 - baseline.primary }
+            : nextProvider.usage.primary,
           weekly: nextProvider.usage.weekly && baseline.weekly !== undefined ? { 
             ...nextProvider.usage.weekly, 
             percent_left: 100 - baseline.weekly 

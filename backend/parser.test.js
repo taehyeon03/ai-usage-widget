@@ -103,6 +103,22 @@ test("returns null for unexpected codex output", () => {
   assert.equal(parseCodexStatus("signed in"), null);
 });
 
+test("parses codex status with only a weekly limit", () => {
+  const usage = parseCodexStatus("Weekly limit: [████████████████████] 100% left (resets 13:36 on 9 Aug)");
+
+  assert.equal(usage.primary, undefined);
+  assert.equal(usage.weekly.percent_left, 100);
+  assert.equal(usage.weekly.reset, "13:36 on 9 Aug");
+});
+
+test("parses codex status with only a 5h limit", () => {
+  const usage = parseCodexStatus("5h limit: [████████░░] 72% left (resets 20:45)");
+
+  assert.equal(usage.primary.percent_left, 72);
+  assert.equal(usage.primary.reset, "20:45");
+  assert.equal(usage.weekly, undefined);
+});
+
 test("parses claude usage and calculates percent left", () => {
   const usage = parseClaudeUsage("Remaining requests: 30\nTotal requests: 120\nReset at 18:00");
 
