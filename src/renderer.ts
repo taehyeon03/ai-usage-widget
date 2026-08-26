@@ -623,12 +623,11 @@ function renderProvider(provider: ProviderUsage, text: Messages, viewMode: ViewM
   const label5h = isGemini ? "24h" : text.limit5h;
   let primary = "";
   if (provider.usage.primary) {
-    const resetValue = isGemini ? "23:59" : provider.usage.primary.reset;
     const primaryUsed = 100 - provider.usage.primary.percent_left;
     const primaryPrevious = previousUsage?.usage?.primary
       ? (100 - previousUsage.usage.primary.percent_left)
       : null;
-    primary = renderLimitRow(label5h, primaryUsed, primaryPrevious, resetValue, text, viewMode, provider.stale || provider.refreshing, false);
+    primary = renderLimitRow(label5h, primaryUsed, primaryPrevious, provider.usage.primary.reset, text, viewMode, provider.stale || provider.refreshing, false);
   }
   
   let weekly = "";
@@ -644,7 +643,7 @@ function renderProvider(provider: ProviderUsage, text: Messages, viewMode: ViewM
 
   item.innerHTML = `
     <div class="provider__top">
-      <strong>${providerLabels[provider.provider] ?? provider.provider}</strong>${provider.stale ? '<span class="provider__badge" aria-hidden="true">!</span>' : ""}
+      <strong>${providerLabels[provider.provider] ?? provider.provider}</strong>
     </div>
     ${primary}
     ${weekly}

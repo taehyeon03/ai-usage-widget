@@ -52,6 +52,7 @@ let hasCompletedInitialLayout = false;
 let suppressWindowStatePersistence = 0;
 let debugSequence = 0;
 let zoomPendingSync = 1.0;
+let expandForNewProviders = false;
 
 const sessionBaselines = new Map<string, { primary?: number; weekly?: number }>();
 const soundAlertState = new Set<string>();
@@ -210,7 +211,15 @@ async function syncWindowLayout(): Promise<void> {
 
   const currentSize = await getCurrentLogicalInnerSize();
   const targetWidth = resolveTargetWidth(minWidth, currentSize.width * zoomPendingSync);
-  const targetHeight = resolveTargetHeight(minHeight, currentSize.height * zoomPendingSync);
+  let targetHeight = resolveTargetHeight(minHeight, currentSize.height * zoomPendingSync);
+  if (expandForNewProviders) {
+    const providerList = shell.querySelector<HTMLElement>(".provider-list");
+    const hiddenProviderHeight = providerList
+      ? Math.max(0, providerList.scrollHeight - providerList.clientHeight)
+      : 0;
+    targetHeight = clampHeight(Math.max(targetHeight, currentSize.height + hiddenProviderHeight));
+    expandForNewProviders = false;
+  }
   zoomPendingSync = 1.0;
   
   const minSizeKey = `${minWidth}x${minHeight}`;
@@ -553,6 +562,10 @@ async function refreshAllProviders(): Promise<void> {
 
   try {
     const detectedProviders = await getDetectedProviders();
+    const knownProviders = new Set((latestSnapshot?.providers ?? []).map((provider) => provider.provider));
+    if (detectedProviders.some((provider) => !knownProviders.has(provider))) {
+      expandForNewProviders = true;
+    }
     appConfig = {
       ...appConfig,
       provider_visibility: normalizeProviderVisibility(appConfig.provider_visibility, detectedProviders)
