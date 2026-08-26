@@ -31,6 +31,8 @@ const AUTH_REQUIRED_PATTERNS = [
   /run\s+\/auth/i,
   /use\s+\/auth/i,
   /authenticate to continue/i,
+  /failed to sign in/i,
+  /how would you like to authenticate/i,
   /\/login\s+to\s+activate/i,
   /use\s+your\s+existing\s+claude\s+max\s+plan/i
 ];

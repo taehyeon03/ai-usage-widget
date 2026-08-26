@@ -20,6 +20,12 @@ test("classifies gemini update requirement", () => {
   assert.equal(failure.status, "Gemini CLI detected; update required");
 });
 
+test("classifies Gemini sign-in screen as login requirement", () => {
+  const failure = classifyCliFailure("gemini", "How would you like to authenticate for this project? Failed to sign in.");
+  assert.equal(failure.kind, "auth_required");
+  assert.equal(failure.status, "Gemini CLI detected; login required");
+});
+
 test("classifies login requirement", () => {
   const failure = classifyCliFailure("codex", "Authentication required. Please log in.");
   assert.equal(failure.kind, "auth_required");
