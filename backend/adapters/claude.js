@@ -48,7 +48,7 @@ function summarizeClaudeFailure(message = "", logPath = "") {
     });
   }
 
-  if (/usage data timed out|loading\s+usage\s+data|refreshing.*usage data/i.test(normalized)) {
+  if (/usage data timed out|loading\s*usage\s*data|refreshing.*usage\s*data/i.test(normalized)) {
     return unavailableProvider("claude", "timeout", {
       status: "Claude Code CLI detected; usage query timed out",
       detail: normalized,
