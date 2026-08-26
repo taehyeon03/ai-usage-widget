@@ -4,7 +4,7 @@ import { parseClaudeUsage } from "../parser.js";
 import { readyProvider, stateFromFailureKind, unavailableProvider } from "../providerState.js";
 
 export async function getClaudeUsage(options = {}) {
-  const result = await runClaudeUsagePty({ timeoutMs: 30_000, cwd: options.cwd });
+  const result = await runClaudeUsagePty({ timeoutMs: 60_000, cwd: options.cwd });
 
   if (!result.ok) {
     return summarizeClaudeFailure(result.stderr, result.debugLogPath);

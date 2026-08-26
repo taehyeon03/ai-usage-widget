@@ -669,7 +669,6 @@ function renderProviderStatus(provider: ProviderUsage, text: Messages): string {
     const logPath = formatStatus(provider.log_path);
     parts.push(`
       <span class="provider-status__segment provider-status__segment--log">
-        <span>Log: ${escapeHtml(logPath)}</span>
         <button class="provider-log-copy" type="button" data-log-path="${escapeAttribute(logPath)}" aria-label="${escapeAttribute(text.copyLog)}" title="${escapeAttribute(text.copyLog)}">⧉</button>
       </span>
     `);
@@ -706,7 +705,7 @@ function localizeProviderStatus(provider: ProviderUsage, text: Messages): string
 function compactProviderStatus(provider: ProviderUsage, text: Messages): string {
   const es = text.locale === "es";
   if (provider.message_key === "provider.grok_free_unmeasurable") {
-    return es ? "Plan Free · uso no disponible" : "Free plan · usage unavailable";
+    return provider.reset_at ? formatProviderReset(provider.reset_at, text.locale) : (es ? "Plan Free" : "Free plan");
   }
   if (provider.state === "auth_required") {
     return es ? "Inicio de sesión requerido" : "Login required";
