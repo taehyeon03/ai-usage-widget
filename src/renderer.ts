@@ -695,7 +695,7 @@ function localizeProviderStatus(provider: ProviderUsage, text: Messages): string
   if (provider.message_key) {
     const localized = text.providerStatuses[provider.message_key];
     if (localized) {
-      const reset = provider.reset_at ? formatProviderReset(provider.reset_at, text.locale) : "—";
+      const reset = provider.reset_at ? formatResetText(provider.reset_at, text.locale, true) : "—";
       return localized.replace("{reset}", reset);
     }
   }
@@ -705,7 +705,7 @@ function localizeProviderStatus(provider: ProviderUsage, text: Messages): string
 function compactProviderStatus(provider: ProviderUsage, text: Messages): string {
   const es = text.locale === "es";
   if (provider.message_key === "provider.grok_free_unmeasurable") {
-    return provider.reset_at ? formatProviderReset(provider.reset_at, text.locale) : (es ? "Plan Free" : "Free plan");
+    return provider.reset_at ? formatResetText(provider.reset_at, text.locale, true) : (es ? "Plan Free" : "Free plan");
   }
   if (provider.state === "auth_required") {
     return es ? "Inicio de sesión requerido" : "Login required";
@@ -724,15 +724,7 @@ function compactProviderStatus(provider: ProviderUsage, text: Messages): string 
 }
 
 function formatProviderReset(value: string, locale: Messages["locale"]): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-    month: "short",
-    day: "numeric"
-  }).format(date);
+  return formatResetText(value, locale, true);
 }
 
 function attachLogCopyHandlers(root: HTMLElement, text: Messages): void {
@@ -975,9 +967,21 @@ function formatDayReset(value: string, locale: "en" | "es"): string | null {
 }
 
 function formatWeekReset(value: string, locale: "en" | "es"): string | null {
-  return formatWithZone(value, locale, true)
+  return formatDateTimeReset(value, locale)
+    ?? formatWithZone(value, locale, true)
     ?? formatTimeAndMonthDay(value, locale)
     ?? extractTimeAndDate(value, locale);
+}
+
+function formatDateTimeReset(value: string, locale: "en" | "es"): string | null {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return null;
+  }
+  const intlLocale = localeForIntl(locale);
+  const time = new Intl.DateTimeFormat(intlLocale, { hour: "numeric", minute: "2-digit", hour12: false }).format(date);
+  const day = new Intl.DateTimeFormat(intlLocale, { month: "short", day: "numeric" }).format(date);
+  return `, `;
 }
 
 function formatWithZone(value: string, locale: "en" | "es", includeDate: boolean): string | null {
