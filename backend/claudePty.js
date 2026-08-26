@@ -213,6 +213,10 @@ function buildFailureReason(output, usageAttempted) {
     return cleaned ? `Prompt not ready: ${cleaned.slice(0, 140)}` : "Prompt not ready";
   }
 
+  if (/loading\s+usage\s+data|usage\s+data.*(?:timed out|timeout)|refreshing.*usage data/i.test(cleaned)) {
+    return "Usage data timed out";
+  }
+
   if (!cleaned) {
     return "No output captured";
   }

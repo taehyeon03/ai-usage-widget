@@ -657,10 +657,10 @@ function renderProvider(provider: ProviderUsage, text: Messages, viewMode: ViewM
 function renderProviderStatus(provider: ProviderUsage, text: Messages): string {
   const parts: string[] = [];
   if (provider.stale) {
-    parts.push(`<span class="provider-status__segment provider-status__segment--cache">${escapeHtml(text.usingCachedData)}</span>`);
+    parts.push(`<span class="provider-status__segment provider-status__segment--cache">${escapeHtml((text.locale === "es" ? "Caché" : "Cached"))}</span>`);
   }
 
-  const status = formatStatus(localizeProviderStatus(provider, text));
+  const status = formatStatus(compactProviderStatus(provider, text));
   if (status) {
     parts.push(`<span class="provider-status__segment provider-status__segment--state">${escapeHtml(status)}</span>`);
   }
@@ -681,7 +681,7 @@ function renderProviderStatus(provider: ProviderUsage, text: Messages): string {
 function providerStatusTitle(provider: ProviderUsage, text: Messages): string {
   const parts = [];
   if (provider.stale) {
-    parts.push(text.usingCachedData);
+    parts.push((text.locale === "es" ? "Caché" : "Cached"));
   }
   if (provider.status) {
     parts.push(formatStatus(localizeProviderStatus(provider, text)));
@@ -701,6 +701,27 @@ function localizeProviderStatus(provider: ProviderUsage, text: Messages): string
     }
   }
   return provider.status ?? text.unavailable;
+}
+
+function compactProviderStatus(provider: ProviderUsage, text: Messages): string {
+  const es = text.locale === "es";
+  if (provider.message_key === "provider.grok_free_unmeasurable") {
+    return es ? "Plan Free · uso no disponible" : "Free plan · usage unavailable";
+  }
+  if (provider.state === "auth_required") {
+    return es ? "Inicio de sesión requerido" : "Login required";
+  }
+  if (provider.state === "no_usage_capability") {
+    return es ? "Uso no disponible" : "Usage unavailable";
+  }
+  if (provider.state === "timeout") {
+    return es ? "Tiempo de espera agotado" : "Usage query timed out";
+  }
+  if (provider.state === "parse_error") {
+    return es ? "Salida no reconocida" : "Unrecognized output";
+  }
+  const localized = localizeProviderStatus(provider, text);
+  return provider.stale ? (es ? "Caché" : "Cached") : localized;
 }
 
 function formatProviderReset(value: string, locale: Messages["locale"]): string {
