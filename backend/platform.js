@@ -70,6 +70,7 @@ export function augmentPath(env) {
     path.join(home, ".asdf", "shims"),
     path.join(home, ".npm-global", "bin"),
     path.join(home, ".local", "bin"),
+    path.join(home, ".grok", "bin"),
     path.join(home, ".cargo", "bin"),
     "/usr/local/bin",
     "/usr/local/sbin",

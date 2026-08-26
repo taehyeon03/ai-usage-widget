@@ -4,7 +4,8 @@ import { detectProviders } from "./detector.js";
 const ADAPTERS = {
   codex: () => import("./adapters/codex.js").then((module) => module.getCodexUsage),
   claude: () => import("./adapters/claude.js").then((module) => module.getClaudeUsage),
-  gemini: () => import("./adapters/gemini.js").then((module) => module.getGeminiUsage)
+  gemini: () => import("./adapters/gemini.js").then((module) => module.getGeminiUsage),
+  grok: () => import("./adapters/grok.js").then((module) => module.getGrokUsage)
 };
 
 export async function getDetectedProviders() {

@@ -17,6 +17,7 @@ export type ProviderUsage = {
   detail?: string;
   log_path?: string;
   status?: string;
+  reset_at?: string;
   stale?: boolean;
   refreshing?: boolean;
   usage: {

@@ -79,3 +79,15 @@ test("builds exhausted provider state from zero percent left", () => {
   assert.equal(result.state, "exhausted");
   assert.equal(result.status, "Gemini quota exhausted");
 });
+
+test("builds exhausted Grok state from its weekly quota", () => {
+  const result = readyProvider("grok", {
+    weekly: {
+      percent_left: 0,
+      reset: "2026-08-31T08:30:00Z"
+    }
+  });
+
+  assert.equal(result.state, "exhausted");
+  assert.equal(result.status, "Grok quota exhausted");
+});

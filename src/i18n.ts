@@ -50,6 +50,7 @@ export type Messages = {
   free5h: string;
   usageWeekly: string;
   freeWeekly: string;
+  providerStatuses: Record<string, string>;
 };
 
 const messages: Record<Locale, Messages> = {
@@ -102,7 +103,16 @@ const messages: Record<Locale, Messages> = {
     usage5h: "5h Usage",
     free5h: "5h Free",
     usageWeekly: "Weekly Usage",
-    freeWeekly: "Weekly Free"
+    freeWeekly: "Weekly Free",
+    providerStatuses: {
+      "provider.grok_stale": "Grok CLI usage data is older than 24 hours",
+      "provider.grok_free_unmeasurable": "Grok CLI detected; Free plan does not expose a usage percentage · resets {reset}",
+      "provider.grok_parse_error": "Grok CLI detected; local weekly usage not recognized",
+      "provider.grok_log_unavailable": "Grok CLI detected; local usage log unavailable",
+      "provider.grok_api_key_no_quota": "Grok CLI detected; API key usage does not expose subscription quota",
+      "provider.grok_auth_required": "Grok CLI detected; login required",
+      "provider.grok_run_once": "Grok CLI detected; start Grok once to record weekly usage"
+    }
   },
   es: {
     locale: "es",
@@ -153,7 +163,16 @@ const messages: Record<Locale, Messages> = {
     usage5h: "Uso 5h",
     free5h: "Libre 5h",
     usageWeekly: "Uso Semanal",
-    freeWeekly: "Libre Semanal"
+    freeWeekly: "Libre Semanal",
+    providerStatuses: {
+      "provider.grok_stale": "Los datos de uso de Grok CLI tienen más de 24 horas",
+      "provider.grok_free_unmeasurable": "Grok CLI detectado; el plan Free no publica un porcentaje de uso · se renueva {reset}",
+      "provider.grok_parse_error": "Grok CLI detectado; no se reconoció el uso semanal local",
+      "provider.grok_log_unavailable": "Grok CLI detectado; el registro local de uso no está disponible",
+      "provider.grok_api_key_no_quota": "Grok CLI detectado; el uso mediante API key no publica la cuota de suscripción",
+      "provider.grok_auth_required": "Grok CLI detectado; es necesario iniciar sesión",
+      "provider.grok_run_once": "Grok CLI detectado; inicia Grok una vez para registrar el uso semanal"
+    }
   }
 };
 

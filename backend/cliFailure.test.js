@@ -43,3 +43,9 @@ test("classifies claude usage subscription requirement separately", () => {
   assert.equal(failure.kind, "subscription_required");
   assert.equal(failure.status, "Claude Code CLI detected; subscription plan required");
 });
+
+test("classifies Grok subscription requirement", () => {
+  const failure = classifyCliFailure("grok", "SuperGrok subscription required");
+  assert.equal(failure.kind, "subscription_required");
+  assert.equal(failure.status, "Grok CLI detected; subscription plan required");
+});

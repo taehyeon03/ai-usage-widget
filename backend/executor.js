@@ -1,7 +1,7 @@
 import { execFile } from "node:child_process";
 import { augmentPath, getShellLaunch, isWindows } from "./platform.js";
 
-const ALLOWED_COMMANDS = new Set(["where.exe", "which", "codex", "claude", "gemini"]);
+const ALLOWED_COMMANDS = new Set(["where.exe", "which", "codex", "claude", "gemini", "grok"]);
 
 export function execFileWithTimeout(command, args = [], options = {}) {
   if (!ALLOWED_COMMANDS.has(command)) {

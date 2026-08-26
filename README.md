@@ -15,6 +15,7 @@ Supported providers:
 - Codex
 - Claude Code
 - Gemini CLI
+- Grok Build CLI (Ubuntu preview)
 
 Cursor token usage is not supported.
 
@@ -23,7 +24,7 @@ The app does not call external APIs to retrieve quota data. It only talks to loc
 ## Features
 
 - Floating, borderless, always-on-top desktop widget.
-- Local provider detection for Codex, Claude Code, and Gemini CLI.
+- Local provider detection for Codex, Claude Code, Gemini CLI, and Grok Build.
 - Usage bars for the main limit and weekly limit when available.
 - Manual and automatic refresh.
 - Previous data stays visible while refreshes are running.
@@ -40,6 +41,7 @@ The app does not call external APIs to retrieve quota data. It only talks to loc
   - `codex`
   - `claude`
   - `gemini`
+  - `grok`
 
 ## Node.js Runtime Policy
 
@@ -83,6 +85,28 @@ sudo apt install -y \
   libayatana-appindicator3-dev \
   librsvg2-dev
 ```
+
+### Grok Build on Ubuntu
+
+Install the official Grok Build CLI and authenticate once:
+
+```bash
+curl -fsSL https://x.ai/cli/install.sh | bash
+grok login
+grok
+```
+
+The widget detects `grok` from `PATH` or `~/.grok/bin/grok`. It reads the
+latest billing snapshot written by Grok to `~/.grok/logs/unified.jsonl`; it
+does not read `auth.json` contents or call xAI APIs. Grok currently exposes
+the shared weekly usage percentage and its reset timestamp. No separate
+five-hour limit is available, so the widget only renders Grok's weekly bar.
+Free accounts may expose the weekly reset but no percentage; in that case the
+widget reports that the plan's usage cannot be measured instead of showing a
+parser error.
+
+If `GROK_HOME` is configured, the widget uses that directory instead of
+`~/.grok`. Logs older than 24 hours remain visible but are marked as stale.
 
 ## macOS Notes
 
@@ -186,9 +210,11 @@ The backend only executes commands from a small whitelist:
 - `where codex` / `which codex`
 - `where claude` / `which claude`
 - `where gemini` / `which gemini`
+- `where grok` / `which grok`
 - `codex ...`
 - `claude ...`
 - `gemini ...`
+- Local Grok files under `GROK_HOME` or `~/.grok`
 
 Every process uses a timeout. A failing provider should not block the widget or hide data from other providers.
 

@@ -33,7 +33,8 @@ const STATE_ACTIONS = {
 const PROVIDER_LABELS = {
   claude: "Claude Code CLI",
   codex: "Codex CLI",
-  gemini: "Gemini CLI"
+  gemini: "Gemini CLI",
+  grok: "Grok CLI"
 };
 
 export function providerLabel(provider) {
@@ -47,7 +48,7 @@ export function buildProviderStatus(provider, state, options = {}) {
 
   return {
     state,
-    message_key: `provider.${state}`,
+    message_key: options.messageKey ?? `provider.${state}`,
     action: STATE_ACTIONS[state] ?? "retry",
     status,
     ...(options.detail ? { detail: options.detail } : {}),
@@ -56,7 +57,7 @@ export function buildProviderStatus(provider, state, options = {}) {
 }
 
 export function readyProvider(provider, usage) {
-  const exhausted = usage?.primary?.percent_left === 0;
+  const exhausted = usage?.primary?.percent_left === 0 || usage?.weekly?.percent_left === 0;
   return {
     provider,
     available: true,

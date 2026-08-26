@@ -9,7 +9,8 @@ type ResizeDirection = "East" | "North" | "NorthEast" | "NorthWest" | "South" | 
 const providerLabels: Record<string, string> = {
   codex: "Codex",
   claude: "Claude Code",
-  gemini: "Gemini"
+  gemini: "Gemini",
+  grok: "Grok"
 };
 const LATEST_RELEASE_URL = "https://api.github.com/repos/odrasile/ai-usage-widget/releases/latest";
 
@@ -597,7 +598,7 @@ function renderProvider(provider: ProviderUsage, text: Messages, viewMode: ViewM
   if (!provider.usage) {
     const statusTitle = providerStatusTitle(provider, text);
     const isGemini = provider.provider === "gemini";
-    const label5h = isGemini ? "24h" : text.limit5h;
+    const label5h = provider.provider === "grok" ? text.weekly : (isGemini ? "24h" : text.limit5h);
     
     item.innerHTML = `
       <div class="provider__top">
@@ -660,7 +661,7 @@ function renderProviderStatus(provider: ProviderUsage, text: Messages): string {
     parts.push(`<span class="provider-status__segment provider-status__segment--cache">${escapeHtml(text.usingCachedData)}</span>`);
   }
 
-  const status = formatStatus(provider.status ?? text.unavailable);
+  const status = formatStatus(localizeProviderStatus(provider, text));
   if (status) {
     parts.push(`<span class="provider-status__segment provider-status__segment--state">${escapeHtml(status)}</span>`);
   }
@@ -684,12 +685,32 @@ function providerStatusTitle(provider: ProviderUsage, text: Messages): string {
     parts.push(text.usingCachedData);
   }
   if (provider.status) {
-    parts.push(formatStatus(provider.status));
+    parts.push(formatStatus(localizeProviderStatus(provider, text)));
   }
   if (provider.log_path) {
     parts.push(`Log: ${formatStatus(provider.log_path)}`);
   }
   return parts.join(" · ") || text.unavailable;
+}
+
+function localizeProviderStatus(provider: ProviderUsage, text: Messages): string {
+  if (provider.message_key) {
+    const localized = text.providerStatuses[provider.message_key];
+    if (localized) {
+      const reset = provider.reset_at ? formatProviderReset(provider.reset_at, text.locale) : "—";
+      return localized.replace("{reset}", reset);
+    }
+  }
+  return provider.status ?? text.unavailable;
+}
+
+function formatProviderReset(value: string, locale: Messages["locale"]): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  }).format(date);
 }
 
 function attachLogCopyHandlers(root: HTMLElement, text: Messages): void {

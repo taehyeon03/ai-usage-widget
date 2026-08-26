@@ -43,13 +43,15 @@ const MCP_AUTH_REQUIRED_PATTERNS = [
 
 const SUBSCRIPTION_REQUIRED_PATTERNS = [
   /\/usage\s+is\s+only\s+available\s+for\s+subscription\s+plans/i,
-  /usage\s+is\s+only\s+available\s+for\s+subscription\s+plans/i
+  /usage\s+is\s+only\s+available\s+for\s+subscription\s+plans/i,
+  /supergrok\s+subscription\s+required/i
 ];
 
 const PROVIDER_LABELS = {
   codex: "Codex CLI",
   claude: "Claude Code CLI",
-  gemini: "Gemini CLI"
+  gemini: "Gemini CLI",
+  grok: "Grok CLI"
 };
 
 export function classifyCliFailure(provider, message = "") {

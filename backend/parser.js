@@ -119,6 +119,151 @@ export function parseClaudeUsage(output) {
   };
 }
 
+export function parseGrokUsage(output) {
+  const lines = String(output).split(/\r?\n/).filter((line) => line.trim());
+
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const parsed = parseJsonValue(lines[index]);
+    const config = findGrokBillingConfig(parsed);
+    const usage = usageFromGrokConfig(config);
+    if (usage) {
+      return usage;
+    }
+  }
+
+  return null;
+}
+
+export function parseGrokSubscriptionTier(output) {
+  const lines = String(output).split(/\r?\n/).filter((line) => line.trim());
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const parsed = parseJsonValue(lines[index]);
+    const tier = findGrokSubscriptionTier(parsed);
+    if (tier) return tier;
+  }
+  return null;
+}
+
+export function parseGrokWeeklyReset(output) {
+  const lines = String(output).split(/\r?\n/).filter((line) => line.trim());
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const parsed = parseJsonValue(lines[index]);
+    const config = findGrokPeriodConfig(parsed);
+    if (!config) continue;
+
+    const period = config.currentPeriod ?? config.current_period ?? {};
+    const periodType = String(period.type ?? period.periodType ?? period.period_type ?? "");
+    const start = period.start ?? config.billingPeriodStart ?? config.billing_period_start;
+    const end = period.end ?? config.billingPeriodEnd ?? config.billing_period_end;
+    if (end && isWeeklyGrokPeriod(periodType, start, end)) return String(end);
+  }
+  return null;
+}
+
+function parseJsonValue(value) {
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function findGrokBillingConfig(value, depth = 0) {
+  if (!value || depth > 12) return null;
+  if (typeof value === "string") {
+    const parsed = parseJsonValue(value);
+    return parsed === null ? null : findGrokBillingConfig(parsed, depth + 1);
+  }
+  if (Array.isArray(value)) {
+    for (let index = value.length - 1; index >= 0; index -= 1) {
+      const found = findGrokBillingConfig(value[index], depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof value !== "object") return null;
+  if (value.creditUsagePercent !== undefined || value.credit_usage_percent !== undefined) return value;
+  for (const child of Object.values(value).reverse()) {
+    const found = findGrokBillingConfig(child, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+function findGrokPeriodConfig(value, depth = 0) {
+  if (!value || depth > 12) return null;
+  if (typeof value === "string") {
+    const parsed = parseJsonValue(value);
+    return parsed === null ? null : findGrokPeriodConfig(parsed, depth + 1);
+  }
+  if (Array.isArray(value)) {
+    for (let index = value.length - 1; index >= 0; index -= 1) {
+      const found = findGrokPeriodConfig(value[index], depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof value !== "object") return null;
+  if (value.currentPeriod || value.current_period || value.billingPeriodEnd || value.billing_period_end) return value;
+  for (const child of Object.values(value).reverse()) {
+    const found = findGrokPeriodConfig(child, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+function findGrokSubscriptionTier(value, depth = 0) {
+  if (!value || depth > 12) return null;
+  if (typeof value === "string") {
+    const parsed = parseJsonValue(value);
+    return parsed === null ? null : findGrokSubscriptionTier(parsed, depth + 1);
+  }
+  if (Array.isArray(value)) {
+    for (let index = value.length - 1; index >= 0; index -= 1) {
+      const found = findGrokSubscriptionTier(value[index], depth + 1);
+      if (found) return found;
+    }
+    return null;
+  }
+  if (typeof value !== "object") return null;
+  const tier = value.subscriptionTier ?? value.subscription_tier;
+  if (typeof tier === "string" && tier.trim()) return tier.trim();
+  for (const child of Object.values(value).reverse()) {
+    const found = findGrokSubscriptionTier(child, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+function usageFromGrokConfig(config) {
+  if (!config) return null;
+  const used = Number(config.creditUsagePercent ?? config.credit_usage_percent);
+  if (!Number.isFinite(used)) return null;
+
+  const period = config.currentPeriod ?? config.current_period ?? {};
+  const periodType = String(period.type ?? period.periodType ?? period.period_type ?? "");
+  const start = period.start ?? config.billingPeriodStart ?? config.billing_period_start;
+  const end = period.end ?? config.billingPeriodEnd ?? config.billing_period_end;
+  if (!isWeeklyGrokPeriod(periodType, start, end) || !end) return null;
+
+  return {
+    weekly: {
+      percent_left: Math.round((100 - Math.min(100, Math.max(0, used))) * 10) / 10,
+      reset: String(end)
+    }
+  };
+}
+
+function isWeeklyGrokPeriod(periodType, start, end) {
+  if (/weekly/i.test(periodType)) return true;
+  if (/monthly/i.test(periodType)) return false;
+  const startMs = Date.parse(String(start ?? ""));
+  const endMs = Date.parse(String(end ?? ""));
+  const durationDays = (endMs - startMs) / 86_400_000;
+  return Number.isFinite(durationDays) && durationDays >= 6 && durationDays <= 8;
+}
+
 function findPercent(output, patterns) {
   const value = findNumber(output, patterns);
   if (value === null) {

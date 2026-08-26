@@ -10,7 +10,7 @@ import {
   resolveWindowsClaudeExecutable
 } from "./platform.js";
 
-const PROVIDERS = ["codex", "claude", "gemini"];
+const PROVIDERS = ["codex", "claude", "gemini", "grok"];
 const DETECTION_CACHE_TTL_MS = 5 * 60_000;
 
 let cachedProviders = null;
@@ -87,9 +87,11 @@ function fallbackProviderExists(provider, env) {
   }
 
   const pathEntries = String(env.PATH || "").split(":").filter(Boolean);
-  const candidates = pathEntries.flatMap((entry) => [
-    path.join(entry, provider)
-  ]);
+  const candidates = pathEntries.map((entry) => path.join(entry, provider));
+
+  if (provider === "grok") {
+    candidates.push(path.join(os.homedir(), ".grok", "bin", "grok"));
+  }
 
   return candidates.some((candidate) => existsSync(candidate));
 }

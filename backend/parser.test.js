@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { parseClaudeUsage, parseCodexStatus, parseGeminiUsage } from "./parser.js";
+import { parseClaudeUsage, parseCodexStatus, parseGeminiUsage, parseGrokSubscriptionTier, parseGrokUsage, parseGrokWeeklyReset } from "./parser.js";
 
 test("returns null for gemini tier-only output", () => {
   const output = `
@@ -183,4 +183,91 @@ test("keeps codex 5h and weekly resets independent with long progress bars", () 
   assert.equal(usage.primary.reset, "01:09 on 27 Apr");
   assert.equal(usage.weekly.percent_left, 6);
   assert.equal(usage.weekly.reset, "09:24 on 29 Apr");
+});
+
+test("parses Grok weekly usage from an official billing config log", () => {
+  const output = JSON.stringify({
+    timestamp: "2026-08-26T10:00:00Z",
+    ctx: {
+      billing: {
+        config: {
+          creditUsagePercent: 18.4,
+          currentPeriod: {
+            type: "USAGE_PERIOD_TYPE_WEEKLY",
+            start: "2026-08-24T08:30:00Z",
+            end: "2026-08-31T08:30:00Z"
+          }
+        }
+      }
+    }
+  });
+  const usage = parseGrokUsage(output);
+
+  assert.equal(usage.primary, undefined);
+  assert.equal(usage.weekly.percent_left, 81.6);
+  assert.equal(usage.weekly.reset, "2026-08-31T08:30:00Z");
+});
+
+test("uses the latest valid Grok billing entry", () => {
+  const first = JSON.stringify({
+    creditUsagePercent: 10,
+    currentPeriod: { type: "USAGE_PERIOD_TYPE_WEEKLY", end: "2026-08-30T08:30:00Z" }
+  });
+  const latest = JSON.stringify({
+    payload: JSON.stringify({
+      credit_usage_percent: 42,
+      current_period: {
+        period_type: "USAGE_PERIOD_TYPE_WEEKLY",
+        end: "2026-08-31T08:30:00Z"
+      }
+    })
+  });
+  const usage = parseGrokUsage(`${first}\nnot-json\n${latest}`);
+
+  assert.equal(usage.weekly.percent_left, 58);
+  assert.equal(usage.weekly.reset, "2026-08-31T08:30:00Z");
+});
+
+test("infers a Grok weekly period from a seven-day range", () => {
+  const usage = parseGrokUsage(JSON.stringify({
+    creditUsagePercent: 100,
+    currentPeriod: {
+      start: "2026-08-24T08:30:00Z",
+      end: "2026-08-31T08:30:00Z"
+    }
+  }));
+
+  assert.equal(usage.weekly.percent_left, 0);
+});
+
+test("does not expose a Grok monthly period as weekly usage", () => {
+  const usage = parseGrokUsage(JSON.stringify({
+    creditUsagePercent: 25,
+    currentPeriod: {
+      type: "USAGE_PERIOD_TYPE_MONTHLY",
+      start: "2026-08-01T00:00:00Z",
+      end: "2026-09-01T00:00:00Z"
+    }
+  }));
+
+  assert.equal(usage, null);
+});
+
+test("extracts the Grok Free tier when no percentage is present", () => {
+  const output = JSON.stringify({
+    ctx: {
+      config: {
+        currentPeriod: {
+          type: "USAGE_PERIOD_TYPE_WEEKLY",
+          start: "2026-08-22T00:00:00+00:00",
+          end: "2026-08-29T00:00:00+00:00"
+        }
+      },
+      subscriptionTier: "Free"
+    }
+  });
+
+  assert.equal(parseGrokUsage(output), null);
+  assert.equal(parseGrokSubscriptionTier(output), "Free");
+  assert.equal(parseGrokWeeklyReset(output), "2026-08-29T00:00:00+00:00");
 });
