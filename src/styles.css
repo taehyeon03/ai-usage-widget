@@ -729,6 +729,8 @@ body {
 
 .provider-log-copy {
   display: inline-grid;
+  opacity: 0;
+  transition: opacity 120ms ease;
   width: 18px;
   height: 18px;
   padding: 0;
@@ -742,6 +744,8 @@ body {
   line-height: 1;
 }
 
+.provider-status__segment--log:hover .provider-log-copy,
+.provider-status__segment--log:focus-within .provider-log-copy,
 .provider-log-copy:hover {
   background: rgba(98, 184, 255, 0.18);
   border-color: rgba(98, 184, 255, 0.32);
