@@ -188,6 +188,10 @@ function buildFailureReason(output) {
     return "Waiting for authentication";
   }
 
+  if (cleaned.includes("Failed to sign in") || cleaned.includes("How would you like to authenticate") || cleaned.includes("client is no longer supported")) {
+    return cleaned.slice(0, 500);
+  }
+
   if (/ready\s*\(.*\)/i.test(cleaned) || /Gemini CLI/i.test(cleaned)) {
     return "Gemini prompt ready; quota not visible yet";
   }
