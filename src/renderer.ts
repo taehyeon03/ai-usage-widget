@@ -705,7 +705,7 @@ function localizeProviderStatus(provider: ProviderUsage, text: Messages): string
 function compactProviderStatus(provider: ProviderUsage, text: Messages): string {
   const es = text.locale === "es";
   if (provider.message_key === "provider.grok_free_unmeasurable") {
-    return provider.reset_at ? formatResetText(provider.reset_at, text.locale, true) : (es ? "Plan Free" : "Free plan");
+    return provider.reset_at ? text.reset + " " + formatResetText(provider.reset_at, text.locale, true) : (es ? "Plan Free" : "Free plan");
   }
   if (provider.state === "auth_required") {
     return es ? "Inicio de sesión requerido" : "Login required";
