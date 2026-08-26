@@ -727,8 +727,11 @@ function formatProviderReset(value: string, locale: Messages["locale"]): string 
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat(locale === "es" ? "es-ES" : "en-US", {
-    dateStyle: "medium",
-    timeStyle: "short"
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+    month: "short",
+    day: "numeric"
   }).format(date);
 }
 
