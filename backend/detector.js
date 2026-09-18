@@ -10,7 +10,9 @@ import {
   resolveWindowsClaudeExecutable
 } from "./platform.js";
 
-const PROVIDERS = ["codex", "claude", "gemini"];
+// Keep the two Codex identities as separate widget rows. Both rows use the
+// same executable, but each is evaluated with its own CODEX_HOME.
+const PROVIDERS = ["codex-account1", "codex-account2", "claude", "gemini"];
 const DETECTION_CACHE_TTL_MS = 5 * 60_000;
 
 let cachedProviders = null;
@@ -49,16 +51,17 @@ async function detectProvidersUncached() {
   const env = augmentPath({ ...process.env });
 
   for (const provider of PROVIDERS) {
-    const result = await execFileWithTimeout(lookup.command, [...lookup.args, provider], { 
+    const executable = provider.startsWith("codex-account") ? "codex" : provider;
+    const result = await execFileWithTimeout(lookup.command, [...lookup.args, executable], {
       timeoutMs: 3000,
       env 
     });
-    if (result.ok && result.stdout.trim().length > 0 && isUsableProviderLookup(provider, result.stdout, env)) {
+    if (result.ok && result.stdout.trim().length > 0 && isUsableProviderLookup(executable, result.stdout, env)) {
       detected.push(provider);
       continue;
     }
 
-    if (fallbackProviderExists(provider, env)) {
+    if (fallbackProviderExists(executable, env)) {
       detected.push(provider);
     }
   }

@@ -8,6 +8,8 @@ type ResizeDirection = "East" | "North" | "NorthEast" | "NorthWest" | "South" | 
 
 const providerLabels: Record<string, string> = {
   codex: "Codex",
+  "codex-account1": "Codex 계정 1",
+  "codex-account2": "Codex 계정 2",
   claude: "Claude Code",
   gemini: "Gemini"
 };
@@ -18,6 +20,7 @@ function defaultConfig(): AppConfig {
     refresh_interval_min: 2,
     view_mode: "consumed",
     transparency_percent: 66,
+    always_on_top: true,
     provider_visibility: {}
   };
 }
@@ -256,6 +259,7 @@ function createShell(
           </div>
         </div>
       </div>
+      <button class="window-pin${currentConfig.always_on_top ? " window-pin--active" : ""}" type="button" aria-pressed="${currentConfig.always_on_top}" aria-label="${escapeHtml(currentConfig.always_on_top ? text.unpinWindow : text.pinWindow)}" title="${escapeHtml(currentConfig.always_on_top ? text.unpinWindow : text.pinWindow)}"><span aria-hidden="true">&#128204;</span></button>
       <button class="window-refresh${isRefreshing ? " window-refresh--active" : ""}" type="button" aria-label="${escapeHtml(isRefreshing ? text.refreshing : text.refresh)}" title="${escapeHtml(isRefreshing ? text.refreshing : text.refresh)}"${isRefreshing ? " disabled" : ""}><span class=\"window-refresh__glyph\" aria-hidden=\"true\">&#8635;</span></button>
       <button class="window-hide" type="button" aria-label="${escapeHtml(text.hideToTray)}">_</button>
       <button class="window-close" type="button" aria-label="${escapeHtml(text.close)}">x</button>
@@ -277,6 +281,16 @@ function createShell(
   });
   header.querySelector(".window-refresh")?.addEventListener("click", () => {
     onRefresh();
+  });
+  header.querySelector(".window-pin")?.addEventListener("click", async (event) => {
+    const button = event.currentTarget as HTMLButtonElement;
+    const nextPinned = button.getAttribute("aria-pressed") !== "true";
+    try {
+      await getCurrentWindow().setAlwaysOnTop(nextPinned);
+      onConfigSave({ ...currentConfig, always_on_top: nextPinned });
+    } catch (error) {
+      console.error("Unable to update always-on-top setting", error);
+    }
   });
 
   const configButton = header.querySelector<HTMLButtonElement>(".window-config");
@@ -365,6 +379,7 @@ function createShell(
           refresh_interval_min: Math.min(60, Math.max(1, parseInt(refreshInput.value, 10) || 2)),
           view_mode: viewModeSelect.value as any,
           transparency_percent: Math.min(90, Math.max(20, parseInt(transparencyInput?.value ?? "", 10) || currentConfig.transparency_percent)),
+          always_on_top: currentConfig.always_on_top,
           locale: languageSelect.value as any,
           sound_alerts: {
             enabled: soundAlertsInput?.checked === true,
@@ -383,17 +398,32 @@ function createShell(
     });
   }
 
-  const resizeHandle = document.createElement("button");
-  resizeHandle.className = "widget__resize";
-  resizeHandle.type = "button";
-  resizeHandle.setAttribute("aria-label", text.resize);
-  resizeHandle.setAttribute("title", text.resize);
-  resizeHandle.innerHTML = "<span></span>";
-  resizeHandle.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    void startResize("SouthEast");
+  const resizeDirections: ResizeDirection[] = [
+    "North",
+    "NorthEast",
+    "East",
+    "SouthEast",
+    "South",
+    "SouthWest",
+    "West",
+    "NorthWest"
+  ];
+  resizeDirections.forEach((direction) => {
+    const resizeHandle = document.createElement("button");
+    resizeHandle.className = `widget__resize widget__resize--${direction.toLowerCase()}`;
+    resizeHandle.type = "button";
+    resizeHandle.setAttribute("aria-label", text.resize);
+    resizeHandle.setAttribute("title", text.resize);
+    if (direction === "SouthEast") {
+      resizeHandle.innerHTML = "<span></span>";
+    }
+    resizeHandle.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      void startResize(direction);
+    });
+    shell.appendChild(resizeHandle);
   });
-  shell.appendChild(resizeHandle);
 
   return shell;
 }
@@ -628,6 +658,8 @@ function renderProvider(provider: ProviderUsage, text: Messages, viewMode: ViewM
       ? (100 - previousUsage.usage.primary.percent_left)
       : null;
     primary = renderLimitRow(label5h, primaryUsed, primaryPrevious, resetValue, text, viewMode, provider.stale || provider.refreshing, false);
+  } else {
+    primary = renderUnavailableLimitRow(label5h, text);
   }
   
   let weekly = "";
@@ -652,6 +684,20 @@ function renderProvider(provider: ProviderUsage, text: Messages, viewMode: ViewM
 
   attachLogCopyHandlers(item, text);
   return item;
+}
+
+function renderUnavailableLimitRow(label: string, text: Messages): string {
+  return `
+    <div class="limit-row limit-row--unavailable">
+      <div class="limit-row__meta limit-row__meta--status">
+        <span class="limit-row__label">${escapeHtml(label)}</span>
+        <span class="limit-row__reset limit-row__reset--status">${escapeHtml(text.unavailable)}</span>
+      </div>
+      <div class="meter meter--empty" aria-label="Usage unavailable">
+        <span class="meter__solid" style="width: 0%"></span>
+      </div>
+    </div>
+  `;
 }
 
 function renderProviderStatus(provider: ProviderUsage, text: Messages): string {
@@ -903,6 +949,7 @@ async function startResize(direction: ResizeDirection): Promise<void> {
     console.error("Unable to start resize drag", error);
   }
 }
+
 
 function formatResetText(value: string, locale: "en" | "es", isWeekly: boolean): string {
   const normalized = sanitizeResetText(value);

@@ -157,6 +157,7 @@ function isReadyForUsageCommand(output) {
   }
 
   return /Status\s+Config\s+Usage\s+Stats/i.test(cleaned)
+    || /Claude\s*in\s*Chrome\s*extension\s*detected/i.test(cleaned)
     || (/Claude\s*Code/i.test(cleaned) && /\?\s*for\s*shortcuts/i.test(cleaned))
     || /❯\s*(?:Try|$)/i.test(cleaned)
     || />\s*(?:Try|$)/i.test(cleaned);

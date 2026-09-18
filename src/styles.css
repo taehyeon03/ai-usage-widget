@@ -171,6 +171,7 @@ body {
 .window-close,
 .window-hide,
 .window-info,
+.window-pin,
 .window-refresh,
 .window-config {
   display: inline-grid;
@@ -192,6 +193,7 @@ body {
 }
 
 .window-info:hover,
+.window-pin:hover,
 .window-config:hover {
   background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
@@ -477,6 +479,16 @@ body {
 .window-refresh:hover {
   background: rgba(79, 201, 120, 0.2);
   color: #ffffff;
+}
+
+.window-pin {
+  opacity: 0.58;
+}
+
+.window-pin--active {
+  background: rgba(98, 184, 255, 0.24);
+  color: #9cd7ff;
+  opacity: 1;
 }
 
 .window-refresh:disabled {
@@ -777,15 +789,52 @@ body {
 
 .widget__resize {
   position: absolute;
-  right: 6px;
-  bottom: 6px;
-  display: grid;
-  width: 18px;
-  height: 18px;
+  z-index: 100;
+  display: block;
   padding: 0;
-  place-items: center;
   border: 0;
   background: transparent;
+  pointer-events: auto;
+}
+
+.widget__resize--north,
+.widget__resize--south {
+  right: 16px;
+  left: 16px;
+  height: 8px;
+  cursor: ns-resize;
+}
+
+.widget__resize--north { top: 0; }
+.widget__resize--south { bottom: 0; }
+
+.widget__resize--east,
+.widget__resize--west {
+  top: 16px;
+  bottom: 16px;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.widget__resize--east { right: 0; }
+.widget__resize--west { left: 0; }
+
+.widget__resize--northeast,
+.widget__resize--northwest,
+.widget__resize--southeast,
+.widget__resize--southwest {
+  width: 20px;
+  height: 20px;
+}
+
+.widget__resize--northeast { top: 0; right: 0; cursor: nesw-resize; }
+.widget__resize--northwest { top: 0; left: 0; cursor: nwse-resize; }
+.widget__resize--southwest { bottom: 0; left: 0; cursor: nesw-resize; }
+.widget__resize--southeast {
+  right: 0;
+  bottom: 0;
+  display: grid;
+  place-items: center;
   cursor: nwse-resize;
 }
 

@@ -4,17 +4,23 @@ import { execFileWithTimeout } from "../executor.js";
 import { parseCodexStatus } from "../parser.js";
 
 export async function getCodexUsage(options = {}) {
-  const result = await runCodexStatusPty({ timeoutMs: 35_000, cwd: options.cwd });
+  const provider = options.provider ?? "codex";
+  const result = await runCodexStatusPty({
+    timeoutMs: 35_000,
+    cwd: options.cwd,
+    env: options.codexHome ? { CODEX_HOME: options.codexHome } : undefined,
+    provider
+  });
   const parsedFromOutput = parseCodexStatus(result.stdout);
   if (parsedFromOutput) {
-    return { provider: "codex", available: true, usage: parsedFromOutput };
+    return { provider, available: true, usage: parsedFromOutput };
   }
 
   if (!result.ok) {
     const failure = classifyCliFailure("codex", `${result.stderr}\n${result.stdout}`);
     if (failure.kind !== "unavailable") {
       return {
-        provider: "codex",
+        provider,
         available: false,
         usage: null,
         status: failure.status,
@@ -24,7 +30,8 @@ export async function getCodexUsage(options = {}) {
 
     const login = await execFileWithTimeout("codex", ["login", "status"], {
       timeoutMs: 8000,
-      cwd: options.cwd
+      cwd: options.cwd,
+      env: options.codexHome ? { ...process.env, CODEX_HOME: options.codexHome } : undefined
     });
     const loginOutput = login.ok ? login.stdout.trim() : login.stderr.trim();
     const loginFailure = classifyCliFailure("codex", loginOutput);
@@ -33,7 +40,7 @@ export async function getCodexUsage(options = {}) {
       : (login.ok ? login.stdout.trim() : "CLI detected");
 
     return {
-      provider: "codex",
+      provider,
       available: false,
       usage: null,
       status: `${loginStatus}; /status unavailable`,
@@ -42,7 +49,7 @@ export async function getCodexUsage(options = {}) {
   }
 
   return {
-    provider: "codex",
+    provider,
     available: false,
     usage: null,
     status: classifyCliFailure("codex", result.stdout).status,

@@ -33,6 +33,8 @@ const STATE_ACTIONS = {
 const PROVIDER_LABELS = {
   claude: "Claude Code CLI",
   codex: "Codex CLI",
+  "codex-account1": "Codex 계정 1",
+  "codex-account2": "Codex 계정 2",
   gemini: "Gemini CLI"
 };
 

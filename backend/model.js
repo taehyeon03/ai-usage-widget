@@ -3,6 +3,8 @@ import { detectProviders } from "./detector.js";
 
 const ADAPTERS = {
   codex: () => import("./adapters/codex.js").then((module) => module.getCodexUsage),
+  "codex-account1": () => import("./adapters/codex.js").then((module) => module.getCodexUsage),
+  "codex-account2": () => import("./adapters/codex.js").then((module) => module.getCodexUsage),
   claude: () => import("./adapters/claude.js").then((module) => module.getClaudeUsage),
   gemini: () => import("./adapters/gemini.js").then((module) => module.getGeminiUsage)
 };
@@ -29,7 +31,12 @@ export async function getProviderUsage(provider) {
 
   try {
     const adapter = await loadAdapter();
-    const usage = await adapter({ cwd: getCliCwd() });
+    const codexHome = provider === "codex-account1"
+      ? (process.env.AI_USAGE_CODEX_HOME_1 || `${process.env.HOME}/.codex-account1`)
+      : provider === "codex-account2"
+        ? (process.env.AI_USAGE_CODEX_HOME_2 || `${process.env.HOME}/.codex-account2`)
+        : undefined;
+    const usage = await adapter({ cwd: getCliCwd(), provider, codexHome });
     if (usage) {
       return usage;
     }

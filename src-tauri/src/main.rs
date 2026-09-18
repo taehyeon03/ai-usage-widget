@@ -50,6 +50,8 @@ struct AppConfig {
     view_mode: String,
     #[serde(default = "default_transparency_percent")]
     transparency_percent: u64,
+    #[serde(default = "default_always_on_top")]
+    always_on_top: bool,
     #[serde(default)]
     locale: Option<String>,
     #[serde(default)]
@@ -81,6 +83,10 @@ fn default_sound_alert_thresholds() -> Vec<u64> {
 
 fn default_transparency_percent() -> u64 {
     66
+}
+
+fn default_always_on_top() -> bool {
+    true
 }
 
 #[tauri::command]
@@ -585,7 +591,7 @@ struct BackendPaths {
 fn resolve_backend(app: &AppHandle, project_root: &Path) -> Result<BackendPaths, String> {
     let cli_cwd = resolve_cli_workspace(app)?;
     let dev_entry = project_root.join("backend").join("index.js");
-    if dev_entry.exists() {
+    if cfg!(debug_assertions) && dev_entry.exists() {
         return Ok(BackendPaths {
             entry: normalize_path_for_child(dev_entry),
             root: normalize_path_for_child(project_root.to_path_buf()),
@@ -1103,6 +1109,7 @@ fn load_app_config_from_disk(app: &AppHandle) -> Result<AppConfig, String> {
             refresh_interval_min: 2,
             view_mode: "consumed".to_string(),
             transparency_percent: default_transparency_percent(),
+            always_on_top: default_always_on_top(),
             locale: None,
             provider_visibility: HashMap::new(),
             sound_alerts: SoundAlertsConfig::default(),
@@ -1200,13 +1207,11 @@ fn create_main_window(app: &AppHandle) -> tauri::Result<()> {
         return Ok(());
     };
 
-    let mut window_config = window_config.clone();
-    window_config.visible = false;
+    let window_config = window_config.clone();
 
     let window = WebviewWindowBuilder::from_config(app, &window_config)?
         .on_page_load(|window, payload| {
             if payload.event() == PageLoadEvent::Finished {
-                let _ = window.set_background_color(Some(tauri::window::Color(0, 0, 0, 0)));
                 let _ = window.show();
                 let _ = window.set_focus();
             }

@@ -37,6 +37,7 @@ export type AppConfig = {
   refresh_interval_min: number;
   view_mode: ViewMode;
   transparency_percent: number;
+  always_on_top: boolean;
   locale?: Locale;
   provider_visibility: Record<string, boolean>;
   sound_alerts?: {

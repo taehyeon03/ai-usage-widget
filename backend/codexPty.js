@@ -28,7 +28,7 @@ export function runCodexStatusPty(options = {}) {
 
     try {
       const launch = getPtyShellLaunch("codex --no-alt-screen");
-      const env = augmentPath({ ...process.env });
+      const env = augmentPath({ ...process.env, ...(options.env ?? {}) });
       preparePtyRuntime();
       child = pty.spawn(
         launch.file,
@@ -40,7 +40,7 @@ export function runCodexStatusPty(options = {}) {
           env
         }
       );
-      eventLog.push(`${timestamp()} SPAWN codex`);
+      eventLog.push(`${timestamp()} SPAWN ${options.provider ?? "codex"}`);
     } catch (error) {
       const failureReason = error instanceof Error ? error.message : String(error);
       resolve({

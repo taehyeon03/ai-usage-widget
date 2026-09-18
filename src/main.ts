@@ -29,6 +29,7 @@ let appConfig: AppConfig = {
   refresh_interval_min: 2,
   view_mode: "consumed",
   transparency_percent: 66,
+  always_on_top: true,
   provider_visibility: {},
   sound_alerts: {
     enabled: false,
@@ -59,8 +60,6 @@ let audioContext: AudioContext | null = null;
 
 const MIN_WINDOW_WIDTH = 224;
 const MIN_WINDOW_HEIGHT = 132;
-const MAX_WINDOW_WIDTH = 1200;
-const MAX_WINDOW_HEIGHT = 1600;
 
 function isProviderVisible(provider: string, visibility: Record<string, boolean> | undefined): boolean {
   return visibility?.[provider] !== false;
@@ -100,6 +99,12 @@ async function startApp(): Promise<void> {
     }
   } catch (error) {
     console.error("Unable to load app config", error);
+  }
+
+  try {
+    await currentWindow.setAlwaysOnTop(appConfig.always_on_top);
+  } catch (error) {
+    console.error("Unable to restore always-on-top setting", error);
   }
 
   if (latestSnapshot) {
@@ -261,11 +266,11 @@ async function syncWindowLayout(): Promise<void> {
 }
 
 function clampWidth(value: number): number {
-  return Math.min(MAX_WINDOW_WIDTH * zoomLevel, Math.max(minWindowWidth(), value));
+  return Math.max(minWindowWidth(), value);
 }
 
 function clampHeight(value: number): number {
-  return Math.min(MAX_WINDOW_HEIGHT * zoomLevel, Math.max(minWindowHeight(), value));
+  return Math.max(minWindowHeight(), value);
 }
 
 function minWindowWidth(): number {
@@ -277,7 +282,9 @@ function minWindowHeight(): number {
 }
 
 function detectVisualMode(): "transparent" | "linux-fallback" {
-  return "transparent";
+  // Transparent WebKit windows can be invisible on Linux compositors.
+  // Use a normal opaque surface there so the widget is reliably visible.
+  return /linux/i.test(navigator.userAgent) ? "linux-fallback" : "transparent";
 }
 
 function detectPlatform(): "macos" | "windows" | "linux" | "unknown" {
@@ -385,6 +392,7 @@ function persistSnapshot(snapshot: UsageSnapshot): void {
 function normalizeAppConfig(config: AppConfig): AppConfig {
   return {
     ...config,
+    always_on_top: config.always_on_top !== false,
     transparency_percent: normalizeTransparencyPercent(config.transparency_percent),
     sound_alerts: {
       enabled: config.sound_alerts?.enabled === true,

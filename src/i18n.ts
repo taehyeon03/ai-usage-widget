@@ -20,6 +20,8 @@ export type Messages = {
   updateError: string;
   releasePage: string;
   resize: string;
+  pinWindow: string;
+  unpinWindow: string;
   developedBy: string;
   detecting: string;
   refreshing: string;
@@ -73,6 +75,8 @@ const messages: Record<Locale, Messages> = {
     updateError: "Unable to check updates",
     releasePage: "Release page",
     resize: "Resize widget",
+    pinWindow: "Keep window on top",
+    unpinWindow: "Stop keeping window on top",
     developedBy: "Developed by Elisardo González Agulla",
     detecting: "Detecting CLIs",
     refreshing: "Refreshing...",
@@ -124,6 +128,8 @@ const messages: Record<Locale, Messages> = {
     updateError: "No se pudieron comprobar actualizaciones",
     releasePage: "Pagina de la release",
     resize: "Redimensionar widget",
+    pinWindow: "Mantener ventana siempre visible",
+    unpinWindow: "Dejar de mantener la ventana siempre visible",
     developedBy: "Desarrollado por Elisardo González Agulla",
     detecting: "Detectando CLIs",
     refreshing: "Actualizando...",
